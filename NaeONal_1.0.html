@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>NaeONal_1.0</title>
+
+	<style type="text/css">
+		#wrapper {
+			position: relative;
+			width: 100%;
+		}
+
+		#header {
+			position: relative;
+			width: 100%;
+		}
+
+		#container {
+			position: relative;
+			width: 100%;
+			text-align: center;
+		}
+
+		#footer {
+			position: relative;
+			width: 100%;
+		}
+	</style>
+
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript">
+		var size;
+		var turn;
+		var winner;
+
+		$(document).ready(function() {
+			init();
+			getMap();
+			play();
+		});
+
+		function init() {
+			size = 10;
+			size = window.prompt("판의 크기를 입력: ");
+			//바둑판 사이즈 크기에 맞게 최소 넓이 설정(브라우저 크기 조정으로 인한 바둑판 흐트러짐 방지)
+			$("#OmocPan").css("min-width", size*26);
+			turn = "Black";
+			winner = "";
+		}
+
+		// 바둑판 맵을 html로 불러오는 함수
+		function getMap() {
+			$("#OmocPan").html(makeMap(size));
+		}
+
+		// 바둑판 맵을 만드는 함수
+		function makeMap(mapsize) {
+			var result = ""; // 문자열 저장을 위한 변수
+
+			for(var i=0; i<mapsize; i++) {
+				for(var j=0; j<mapsize; j++) {
+					result += "<img id='" + j + "," + i + "' src='./Pan(20).png' />" + " ";
+					// id의 값을 좌표값으로 지정([x좌표값],[y좌표값])
+					// -> 줄간격을 맞추기 위해 " "(공백) 추가
+				}
+				result += "</br>";
+			}
+			return result;
+		}
+
+		// 바둑알 두는 것을 처리하는 함수
+		function play() {
+			mouseOver();
+			// 바둑판의 이미지를 클릭했을 때
+			$("#OmocPan img").click(function() {
+				// 승패가 결정되고 나서도 작동하는 것에 대한 예외처리
+				if(winner == "") {
+					// 바둑판의 이미지가 바둑알이 아닐 경우 (중복해서 놓는 것에 대한 예외처리)
+					if( ($(this).attr("src") != "./Black(20).png") && ($(this).attr("src") != "./White(20).png") ) {
+						//흑돌의 차례일 때 처리
+						if(turn == "Black") {
+							$(this).attr("src","./Black(20).png");
+							turn = "White";
+						}
+						//백톨의 차례일 때 처리 (반복문이 아니라서 그런지 else로 처리하지 않으면 흑돌의 차례만 반복)
+						if(turn == "White") {
+							$(this).attr("src","./White(20).png");
+							turn = "Black";
+						}
+
+						checking(this);
+						winMessage();
+					}
+				}
+			});
+		}
+
+		function checking(player) {
+			var location = $(player).attr("id"); // 바둑돌을 둔 player의 바둑돌 id값(좌표값)
+			var local = location.split(","); // 좌표 x, y값을 배열에 저장
+			var color = $(player).attr("src"); // 바둑돌을 둔 player의 바둑돌 색
+			var stoneNum = 0; // 오목이 되는지 체크할 바둑돌 개수 변수
+
+			checkCase(-1, 0, 1, 0); // 수평선 사이에서의 체크
+			checkCase(0, -1, 0, 1); // 수직선 사이에서의 체크
+			checkCase(-1, 1, 1, -1); // 대각선(정비례 모양) 사이에서의 체크
+			checkCase(-1, -1, 1, 1); // 대각선(반비례 모양) 사이에서의 체크
+
+			function checkCase(x1_vec, y1_vec, x2_vec, y2_vec) {
+				var direct1_x = parseInt(local[0]); // 지정해주는 단위벡터만큼 이동하며 체크해줄 x좌표
+				var direct1_y = parseInt(local[1]); // 지정해주는 단위벡터만큼 이동하며 체크해줄 y좌표
+				var direct2_x = parseInt(local[0]); // 지정해주는 단위벡터만큼 이동하며 체크해줄 x좌표
+				var direct2_x = parseInt(local[1]); // 지정해주는 단위벡터만큼 이동하며 체크해줄 y좌표
+				// -> (direct1_x, direct1_y)가 한쪽방향으로 체크, (direct2_x, direct2_y)가 반대방향으로 체크
+
+				var scan_1 = true; // 한쪽방향(좌측, 상단) 스캔의 필요 여부
+				var scan_2 = true; // 반대방향(우측, 하단) 스캔의 필요 여부
+				stoneNum = 1; // 바둑돌을 놓는 순간 놓은 돌을 포함하기 때문에 1로 초기화
+
+				while(true) {
+					if(scan_1 == true || scan_2 == true) {
+						// 놓은 바둑돌을 기준으로 한 쪽 방향 체크(좌측과 상단)
+						if(direct1_x + x1_vec >= 0 && direct1_y + y1_vec >= 0) {
+							if( $("#OmocPan img[id='" + (direct1_x+x1_vec) + "," + (direct1_y+y1_vec) + "']").attr("src") == color ) {
+								stoneNum++;
+								direct1_x += x1_vec;
+								direct1_y += y1_vec;
+							}
+							else {
+								scan_1 = false;
+							}
+						}
+						else {
+							scan_1 = false;
+						}
+						// 놓은 바둑돌을 기준으로 나머지 방향 체크(우측과 하단)
+						if(direct2_x + x2_vec >= 0 && direct2_y + y2_vec <= size-1) {
+							if( $("#OmocPan img[id='" + (direct2_x+x2_vec) + "," + (direct2_y+y2_vec) + "']").attr("src") == color ) {
+								stoneNum++;
+								direct2_x += x2_vec;
+								direct2_y += y2_vec;
+							}
+							else {
+								scan_2 = false;
+							}
+						}
+						else {
+							scan_2 = false;
+						}
+					}
+					// 양쪽 방향 모두 더이상의 체크가 필요없을 경우
+					else {
+						if(stoneNum >= 5) {
+							winner = color;
+						}
+						break;
+					}
+				}
+			}
+		}
+
+		function winMessage() {
+			if(winner == "./Black(20).png") {
+				alert("'백'의 승리!");
+			}
+			else if(winner == "./White(20).png") {
+				alert("'흑'의 승리!");
+			}
+		}
+
+		function mouseOver() {
+			$("#OmocPan img").hover(
+				function() {
+					// 승패가 결정되고 나서도 작동하는 것에 대한 예외 처리
+					if(winner == "") {
+						// 놓인 바둑돌에 마우스를 올려놓아도 그림자가 생기는 것에 대한 예외처리
+						if( ($(this).attr("src") != "./Black(20).png") && ($(this).attr("src") != "./White(20).png") ) {
+							$(this).attr("src","./" + turn + "(shadow).png");
+						}
+					}
+				}, 
+				function() {
+					// 클릭했을 경우에도 다시 바둑돌이 사라지는 것에 대한 예외처리
+					if( ($(this).attr("src") != "./Black(20).png") && ($(this).attr("src") != "./White(20).png") ) {
+						$(this).attr("src","./Pan(20).png");
+					}
+				}
+			);
+		}
+	</script>
+</head>
+<body>
+	<div id="wrapper">
+		<div id="header"></div>
+		<div id="container">
+			<div id="OmocPan"></div>
+		</div>
+		<div id="footer"></div>
+	</div>
+</body>
+</html>
